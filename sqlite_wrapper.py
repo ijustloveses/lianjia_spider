@@ -28,7 +28,7 @@ class SQLiteWrapper(object):
             conn = self.get_conn()
             kwargs['conn'] = conn
             rs = func(self, *args, **kwargs)
-            self.conn_close()
+            self.conn_close(conn)
             self.lock.release()
             return rs
         return connection
