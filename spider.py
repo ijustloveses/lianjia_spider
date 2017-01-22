@@ -23,7 +23,8 @@ hds=[{'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6)
      {'User-Agent': 'Opera/9.80 (Windows NT 6.1; U; en) Presto/2.8.131 Version/11.11'}
 ]
 
-regions=[u"西城", u"海淀", u"东城"]
+# regions=[u"西城", u"海淀", u"东城"]
+regions=[u"东城"]
 
 # lock = threading.Lock()
 
@@ -48,7 +49,8 @@ def url_to_soup(url_page):
         plain_text = unicode(source_code, 'utf-8')
         soup = BS(plain_text, "html.parser")
         """
-        r = requests.get(url_page, headers=hds[random.randint(0, len(hds) - 1)])
+        # r = requests.get(url_page, headers=hds[random.randint(0, len(hds) - 1)])
+        r = requests.get(url_page)
         r.encoding = 'utf-8'
         soup = BS(r.text, "html.parser")
         return soup
@@ -106,7 +108,7 @@ def do_xiaoqu_spider(db_xq, region=u"海淀"):
     # threads = []
     for i in range(total_pages):
         url_page = u"http://bj.lianjia.com/xiaoqu/pg{}rs{}/".format(i + 1, region)
-        time.sleep(5)
+        time.sleep(10)
         xiaoqu_spider(db_xq, url_page)
     """
         t = threading.Thread(target=xiaoqu_spider, args=(db_xq, url_page))
