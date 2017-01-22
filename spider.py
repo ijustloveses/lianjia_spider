@@ -106,7 +106,7 @@ def do_xiaoqu_spider(db_xq, region=u"海淀"):
     # threads = []
     for i in range(total_pages):
         url_page = u"http://bj.lianjia.com/xiaoqu/pg{}rs{}/".format(i + 1, region)
-        time.sleep(2)
+        time.sleep(5)
         xiaoqu_spider(db_xq, url_page)
     """
         t = threading.Thread(target=xiaoqu_spider, args=(db_xq, url_page))
