@@ -31,10 +31,13 @@ hds=[{'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6)
 ################
 
 
-def gen_insert_command(info_dict, info_list, table):
+def gen_insert_command(info_dict, info_list, table, partial=False):
     t = [info_dict.get(i, '') for i in info_list]
     t = tuple(t)
-    return (r"insert into {} values(".format(table) + ','.join(["?"] * len(info_list)) + ")", t)
+    if partial:
+        return (r"insert into {}({}) values(".format(table, ','.join(info_list)) + ','.join(["?"] * len(info_list)) + ")", t)
+    else:
+        return (r"insert into {} values(".format(table) + ','.join(["?"] * len(info_list)) + ")", t)
 
 
 def url_to_soup(url_page):
@@ -140,21 +143,27 @@ def rebuild_xiaoqu_db():
 ################
 #
 #    二手: 根据给定 xuequ 来获取全部学区对应所有小区的二手房信息
+#    和上面根据大区查小区不同，这里会有可能在列表页中没有 pager 甚至没有任何记录
+#    另外，上面查小区，这个基本不变化，不需要频繁更新，而这里就不同了，需要频繁更新！  删除 TODO
 #
 ################
 
 
-def gen_ershou_insert_command(info_dict):
-    info_list=[u'url', u'title', u'info', u'floor', u'history', u'tag', u'pricestr', u'price', u'unit']
-    return gen_insert_command(info_dict, info_list, 'ershou')
+def gen_ershou_insert_command(info_dict, table, partial=False):
+    info_list=[u'url', u'title', u'info', u'floor', u'history', u'tag', u'pricestr', u'price', u'unit', u'xiaoqu']
+    return gen_insert_command(info_dict, info_list, table, partial=partial)
 
 
-def get_ershou_list(url_page):
+def get_ershou_list(url_page, xiaoqu):
     """
     从某个小区的单个分页页面获取全部在售二手房数据，页面 url like http://bj.lianjia.com/ershoufang/c1111027382209/
     """
     soup = url_to_soup(url_page)
-    lists = soup.find('ul', {'class': 'sellListContent'}).findAll('li')
+    try:
+        lists = soup.find('ul', {'class': 'sellListContent'}).findAll('li')
+    except:
+        # 没有任何记录
+        lists = []
     for item in lists:
         info_dict = {}
         titlelink = item.find('div', {'class': 'title'}).find('a')
@@ -167,53 +176,71 @@ def get_ershou_list(url_page):
         info_dict['pricestr'] = item.find('div', {'class': 'priceInfo'}).find('div', {'class': 'totalPrice'}).text
         info_dict['price'] = str_to_int(info_dict['pricestr'][: -1])
         info_dict['unit'] = item.find('div', {'class': 'priceInfo'}).find('div', {'class': 'unitPrice'}).text
+        info_dict['xiaoqu'] = xiaoqu
         yield info_dict
 
 
-def ershou_spider(db_xq, url_page):
+def ershou_spider(db_xq, url_page, xiaoqu):
     """ 把单个分页页面中的在售二手入库 """
-    for info_dict in get_ershou_list(url_page):
-        command = gen_ershou_insert_command(info_dict)
+    for info_dict in get_ershou_list(url_page, xiaoqu):
+        command = gen_ershou_insert_command(info_dict, 'ershou', partial=True)
+        db_xq.execute(command, 1)
+        command = gen_ershou_insert_command(info_dict, 'ershou_latest', partial=False)
         db_xq.execute(command, 1)
 
 
-def do_ershou_spider_by_xiaoqu(db_xq, xiaoqu_id):
+def do_ershou_spider_by_xiaoqu(db_xq, xiaoqu_id, xiaoqu):
     """ 给定区域，获取全部分页，然后对所有页面获取小区信息 """
     url = "http://bj.lianjia.com/ershoufang/" + xiaoqu_id + "/"
     soup = url_to_soup(url)
 
-    d = 'd=' + soup.find('div', {'class': 'page-box house-lst-page-box'}).get('page-data')
-    exec(d)
-    total_pages = d['totalPage']
+    try:
+        d = 'd=' + soup.find('div', {'class': 'page-box house-lst-page-box'}).get('page-data')
+        exec(d)
+        total_pages = d['totalPage']
+    # 没有 pager
+    except:
+        total_pages = 1
     print "total pages for {}: {}".format(xiaoqu_id, total_pages)
 
+    # 先从 ershou_latest 表中清除该小区数据，然后导入
+    command = u'delete from ershou_latest where xiaoqu = "{}"'.format(xiaoqu)
+    db_xq.execute(command)
     for i in range(total_pages):
         url_page = u"http://bj.lianjia.com/ershoufang/pg{}{}/".format(i + 1, xiaoqu_id)
-        time.sleep(2 + random.randint(3, 8))
-        ershou_spider(db_xq, url_page)
+        time.sleep(2 + random.randint(4, 9))
+        ershou_spider(db_xq, url_page, xiaoqu)
 
 
-def get_xiaoquid_by_xuequ(db_xq, xuequ):
+def get_xiaoqu_by_xuequ(db_xq, xuequ):
     q = Querier()
     for regionb, xuequ, school, xiaoqu, year, distance, number in q.query_xuequ(xuequ):
         # 可能会有同名小区的，会返回多个
-        sql = u'select url from xiaoqu where name = "{}"'.format(xiaoqu.decode('utf-8'))
+        xiaoqu = xiaoqu.decode('utf-8')
+        sql = u'select url from xiaoqu where name = "{}"'.format(xiaoqu)
         for url in db_xq.fetchall(sql):
             # http://bj.lianjia.com/xiaoqu/1115056607153512/
-            print u"-------- {} -----------".format(xiaoqu.decode('utf-8'))
+            print u"-------- {} -----------".format(xiaoqu)
             # 加前缀 c
-            yield 'c' + url[0].strip('/').split('/')[-1]
+            yield (xiaoqu, 'c' + url[0].strip('/').split('/')[-1])
 
 
 def run_ershoufang_info():
     print "creating ershou table in lianjia-xq.db ..."
-    command = 'create table if not exists ershou (url TEXT primary key UNIQUE, title TEXT, info TEXT, floor TEXT, history TEXT, tag TEXT,  pricestr TEXT, price int, unit TEXT)'
+    command = "create table if not exists ershou (url TEXT primary key UNIQUE, title TEXT, info TEXT, floor TEXT, history TEXT, tag TEXT,  pricestr TEXT, price int, unit TEXT, xiaoqu TEXT, created timestamp not null default (datetime('now', 'localtime')))"
     db_xq = SQLiteWrapper('lianjia-xq.db', command)
+    command = 'create table if not exists ershou_latest (url TEXT primary key UNIQUE, title TEXT, info TEXT, floor TEXT, history TEXT, tag TEXT,  pricestr TEXT, price int, unit TEXT, xiaoqu TEXT)'
+    db_xq.execute(command)
 
-    xuequs = [u'德胜学区']
+    # start = False
+    xuequs = [u'德胜学区', u'月坛学区', u'什刹海学区']  # , u'展览路学区']
     for xuequ in xuequs:
-        for xiaoqu_id in get_xiaoquid_by_xuequ(db_xq, xuequ):
-            do_ershou_spider_by_xiaoqu(db_xq, xiaoqu_id)
+        for xiaoqu, xiaoqu_id in get_xiaoqu_by_xuequ(db_xq, xuequ):
+            # if xiaoqu_id != 'c1111027374577' and start == False:
+            #     continue
+            # if xiaoqu_id == 'c1111027374577':
+            #    start = True
+            do_ershou_spider_by_xiaoqu(db_xq, xiaoqu_id, xiaoqu)
 
 
 if __name__ == '__main__':
