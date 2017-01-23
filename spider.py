@@ -7,6 +7,7 @@ import random
 # import threading
 from bs4 import BeautifulSoup as BS
 import time
+from xiaoqu_xuequ_query import Querier
 
 hds=[{'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6'},
      {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.12 Safari/535.11'},
@@ -23,15 +24,10 @@ hds=[{'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6)
      {'User-Agent': 'Opera/9.80 (Windows NT 6.1; U; en) Presto/2.8.131 Version/11.11'}
 ]
 
-# regions=[u"西城", u"海淀", u"东城"]
-regions=[u"东城"]
-
-# lock = threading.Lock()
-
 ################
-#              #
-#    基础      #
-#              #
+#
+#    基础
+#
 ################
 
 
@@ -59,10 +55,17 @@ def url_to_soup(url_page):
         exit(-1)
 
 
+def str_to_int(s):
+    try:
+        return int(s)
+    except:
+        return -1
+
+
 ################
-#              #
-#    小区      #
-#              #
+#
+#    小区: 根据指定的 regions (大区) 来获取对应大区中的所有小区
+#
 ################
 
 
@@ -108,7 +111,7 @@ def do_xiaoqu_spider(db_xq, region=u"海淀"):
     # threads = []
     for i in range(total_pages):
         url_page = u"http://bj.lianjia.com/xiaoqu/pg{}rs{}/".format(i + 1, region)
-        time.sleep(10)
+        time.sleep(2 + random.randint(2, 10))
         xiaoqu_spider(db_xq, url_page)
     """
         t = threading.Thread(target=xiaoqu_spider, args=(db_xq, url_page))
@@ -126,6 +129,8 @@ def rebuild_xiaoqu_db():
     command = 'create table if not exists xiaoqu (url TEXT UNIQUE, name TEXT primary key UNIQUE, regionb TEXT, regions TEXT)'
     db_xq = SQLiteWrapper('lianjia-xq.db', command)
 
+    regions=[u"西城", u"海淀", u"东城"]
+    # regions=[u"东城"]
     for region in regions:
         print u"starting to crawl xiaoqu in region: {}".format(region)
         do_xiaoqu_spider(db_xq, region)
@@ -133,19 +138,84 @@ def rebuild_xiaoqu_db():
 
 
 ################
-#              #
-#    成交      #
-#              #
+#
+#    二手: 根据给定 xuequ 来获取全部学区对应所有小区的二手房信息
+#
 ################
 
 
-def gen_chengjiao_insert_command(info_dict):
-    info_list=[u'链接', u'小区名称', u'户型', u'面积', u'朝向', u'楼层', u'建造时间', u'签约时间', u'签约单价', u'签约总价', u'房产类型', u'学区', u'地铁']
-    return gen_insert_command(info_dict, info_list, 'chengjiao')
+def gen_ershou_insert_command(info_dict):
+    info_list=[u'url', u'title', u'info', u'floor', u'history', u'tag', u'pricestr', u'price', u'unit']
+    return gen_insert_command(info_dict, info_list, 'ershou')
+
+
+def get_ershou_list(url_page):
+    """
+    从某个小区的单个分页页面获取全部在售二手房数据，页面 url like http://bj.lianjia.com/ershoufang/c1111027382209/
+    """
+    soup = url_to_soup(url_page)
+    lists = soup.find('ul', {'class': 'sellListContent'}).findAll('li')
+    for item in lists:
+        info_dict = {}
+        titlelink = item.find('div', {'class': 'title'}).find('a')
+        info_dict['url'] = titlelink.get('href')
+        info_dict['title'] = titlelink.text
+        info_dict['info'] = item.find('div', {'class': 'houseInfo'}).text
+        info_dict['floor'] = item.find('div', {'class': 'positionInfo'}).text
+        info_dict['history'] = item.find('div', {'class': 'followInfo'}).text
+        info_dict['tag'] = ' | '.join(map(lambda x: x.text, item.find('div', {'class': 'tag'}).findAll('span')))
+        info_dict['pricestr'] = item.find('div', {'class': 'priceInfo'}).find('div', {'class': 'totalPrice'}).text
+        info_dict['price'] = str_to_int(info_dict['pricestr'][: -1])
+        info_dict['unit'] = item.find('div', {'class': 'priceInfo'}).find('div', {'class': 'unitPrice'}).text
+        yield info_dict
+
+
+def ershou_spider(db_xq, url_page):
+    """ 把单个分页页面中的在售二手入库 """
+    for info_dict in get_ershou_list(url_page):
+        command = gen_ershou_insert_command(info_dict)
+        db_xq.execute(command, 1)
+
+
+def do_ershou_spider_by_xiaoqu(db_xq, xiaoqu_id):
+    """ 给定区域，获取全部分页，然后对所有页面获取小区信息 """
+    url = "http://bj.lianjia.com/ershoufang/" + xiaoqu_id + "/"
+    soup = url_to_soup(url)
+
+    d = 'd=' + soup.find('div', {'class': 'page-box house-lst-page-box'}).get('page-data')
+    exec(d)
+    total_pages = d['totalPage']
+    print "total pages for {}: {}".format(xiaoqu_id, total_pages)
+
+    for i in range(total_pages):
+        url_page = u"http://bj.lianjia.com/ershoufang/pg{}{}/".format(i + 1, xiaoqu_id)
+        time.sleep(2 + random.randint(3, 8))
+        ershou_spider(db_xq, url_page)
+
+
+def get_xiaoquid_by_xuequ(db_xq, xuequ):
+    q = Querier()
+    for regionb, xuequ, school, xiaoqu, year, distance, number in q.query_xuequ(xuequ):
+        # 可能会有同名小区的，会返回多个
+        sql = u'select url from xiaoqu where name = "{}"'.format(xiaoqu.decode('utf-8'))
+        for url in db_xq.fetchall(sql):
+            # http://bj.lianjia.com/xiaoqu/1115056607153512/
+            print u"-------- {} -----------".format(xiaoqu.decode('utf-8'))
+            # 加前缀 c
+            yield 'c' + url[0].strip('/').split('/')[-1]
+
+
+def run_ershoufang_info():
+    print "creating ershou table in lianjia-xq.db ..."
+    command = 'create table if not exists ershou (url TEXT primary key UNIQUE, title TEXT, info TEXT, floor TEXT, history TEXT, tag TEXT,  pricestr TEXT, price int, unit TEXT)'
+    db_xq = SQLiteWrapper('lianjia-xq.db', command)
+
+    xuequs = [u'德胜学区']
+    for xuequ in xuequs:
+        for xiaoqu_id in get_xiaoquid_by_xuequ(db_xq, xuequ):
+            do_ershou_spider_by_xiaoqu(db_xq, xiaoqu_id)
 
 
 if __name__ == '__main__':
-    rebuild_xiaoqu_db()
-
-    # command = 'create table if not exists chengjiao (href TEXT primary key UNIQUE, name TEXT, style TEXT, area TEXT, orientation TEXT, floor TEXT, year TEXT, sign_time TEXT, unit_price TEXT, total_price TEXT,fangchan_class TEXT, school TEXT, subway TEXT)'
-    # db_cj = SQLiteWrapper('lianjia-cj.db', command)
+    # rebuild_xiaoqu_db()
+    run_ershoufang_info()
