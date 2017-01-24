@@ -3,6 +3,8 @@ from bottle import route, run, request, response, default_app
 import sys
 sys.path.append('../spider/')
 from xiaoqu_xuequ_query import Querier
+from info_query import Querier as InfoQuerier
+import json
 
 
 @route('/regionb')
@@ -36,9 +38,13 @@ def xiaoqu():
 
 @route('/ershou')
 def ershou():
-    # xiaoqu = request.query.xiaoqu
+    xiaoqu = request.query.xiaoqu
+    q = InfoQuerier('../spider/lianjia-xq.db')
+    ershou = []
+    for _, title, info, floor, history, tag, pricestr, _, unit, _ in q.get_ershou_by_xiaoqu(xiaoqu):
+        ershou.append([title, info, floor, history, tag, pricestr, unit])
     response.set_header('Access-Control-Allow-Origin', '*')
-    return u'{"xiaoqu": ["青年湖北区"]}'
+    return json.dumps({"ershou": ershou})
 
 
 app = default_app()

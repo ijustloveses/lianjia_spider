@@ -1,18 +1,31 @@
-Vue.component('event-item', {
+Vue.component('ershou-item', {
     template: '\
     <a href="#" class="list-group-item">\
         <h4 class="list-group-item-heading">\
             <i class="glyphicon glyphicon-bullhorn"></i>\
-            {{ eve.name }}\
+            {{ es[0] }}\
         </h4>\
         <h5>\
-            <i class="glyphicon glyphicon-calendar" v-if="eve.date"></i>\
-            {{ eve.date }}\
+            {{ es[1] }}\
         </h5>\
-        <p class="list-group-item-text" v-if="eve.desc">{{ eve.desc }}</p>\
+        <h5>\
+            {{ es[2] }}\
+        </h5>\
+        <h5>\
+            {{ es[3] }}\
+        </h5>\
+        <h5>\
+            {{ es[4] }}\
+        </h5>\
+        <h5>\
+            {{ es[5] }}\
+        </h5>\
+        <h5>\
+            {{ es[6] }}\
+        </h5>\
     </a>\
     ',
-    props: ['eve']
+    props: ['es']
 });
 
 Vue.component('xuequ-item', {
@@ -34,7 +47,8 @@ new Vue({
         regionb: [],
         regionb_selected: '',
         xuequ: [],
-        xiaoqu: []
+        xiaoqu: [],
+        ershou: []
     },
     mounted: function() {    // will run when app loads
         // when app loads, we want to call it to init some data from wherever place
