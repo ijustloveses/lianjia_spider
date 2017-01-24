@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Vue</title>
+    <title>Lianjia Querier</title>
     <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css"></link>
 </head>
 
@@ -10,43 +10,44 @@
     <!-- navigation bar -->
     <nav class="navbar navbar-default">
         <div class="container-fluid">
-            <a class="navbar-brand"><i class="glyphicon glyphicon-bullhorn"></i>Vue Events Bulletin Board</a>
+            <a class="navbar-brand"><i class="glyphicon glyphicon-bullhorn"></i><span style="margin-left:5px">Querier DashBoard</span></a>
         </div>
     </nav>
 
     <!-- main body of our application -->
     <div class="container" id="events">
         <!-- add an event form -->
-        <div class="col-sm-6">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3>Add an Event</h3>
-                </div>
-
-                <div class="panel-body">
-                    <div class="form-group">
-                        <input class="form-control" placeholder="Event Name" v-model="eve.name"/>
-                    </div>
-
-                    <div class="form-group">
-                        <textarea class="form-control" placeholder="Event Desc" v-model="eve.desc"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <input type="date" class="form-control" placeholder="Date" v-model="eve.date"/>
-                    </div>
-
-                    <button class="btn btn-primary" v-on:click="addEvent">Submit</button>
-                </div>
+        <div class="col-sm-1">
+            <div class="form-group" class="col-sm-1">
+                <select class="form-control" v-model="regionb_selected">
+                    <option v-for="r in regionb" v-bind:value="r.value">
+                        {{ r.text }}
+                    </option>
+                </select>
+            </div>
+            <div>
+                <button class="btn btn-primary" v-on:click="queryRegionb">Submit</button>
             </div>
         </div>
 
-        <!-- show the events -->
-        <div class="col-sm-6">
+        <div class="col-sm-3">
             <div class="list-group">
-                <a is="event-item"
-                   v-for="(eve, index) in events"
-                   v-bind:eve="eve">
+                <a is="xuequ-item"
+                   v-for="(xq, index) in xuequ"
+                   v-bind:xq="xq"
+                   v-on:qxq="queryXuequ(xq)"
+                   >
+               </a>
+            </div>
+        </div>
+
+        <div class="col-sm-3">
+            <div class="list-group">
+                <a is="xuequ-item"
+                   v-for="(xq, index) in xiaoqu"
+                   v-bind:xq="xq"
+                   v-on:qxq="queryXiaoqu(xq)"
+                   >
                </a>
             </div>
         </div>

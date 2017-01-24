@@ -15,33 +15,77 @@ Vue.component('event-item', {
     props: ['eve']
 });
 
+Vue.component('xuequ-item', {
+    template: '\
+    <a href="#" class="list-group-item">\
+        <h4 class="list-group-item-heading">\
+            <i class="glyphicon glyphicon-bullhorn"></i>\
+            {{ xq }}\
+        </h4>\
+        <button class="btn btn-primary btn-sm" v-on:click="$emit(\'qxq\')">Query</button>\
+    </a>\
+    ',
+    props: ['xq']
+});
+
 new Vue({
     el: '#events',    // target the container div with id "events"
     data: {    // view model
-        eve: {name: '', desc: '', date: ''},
-        events: []
+        regionb: [],
+        regionb_selected: '',
+        xuequ: [],
+        xiaoqu: []
     },
     mounted: function() {    // will run when app loads
         // when app loads, we want to call it to init some data from wherever place
-        this.fetchEvents();
+        this.initRegionb();
     },
     methods: {    // register custom methods for app
-        fetchEvents: function() {
-            var events = [
-                { id: 1, name: 'Initialized', desc: 'init process done', date: '2016-12-12' },
-                { id: 2, name: 'Data Loaded', desc: 'data loading process done', date: '2016-12-13' },
-                { id: 3, name: 'Analysis Done', desc: 'analysis process done', date: '2016-12-14' }
-            ];
-            for (var i in events) {
-                this.events.push(events[i]);
-            }
+        initRegionb: function() {
+            this.$http.get('http://192.168.33.11/regionb').then(function(response) {
+                var regionb = JSON.parse(response.body)['regionb']
+                for (r in regionb) {
+                    this.regionb.push({ text: regionb[r], value: regionb[r] });
+                }
+            }, function(error) {
+                console.log(error);
+            });
         },
 
-        addEvent: function() {
-            if (this.eve.name) {
-                this.events.push(this.eve);
-                this.eve =  {name: '', desc: '', date: ''};
-            }
+        queryRegionb: function() {
+            this.$http.get('http://192.168.33.11/xuequ', {params: {regionb: this.regionb_selected}}).then(function(response) {
+                this.xuequ = [];
+                var xuequ = JSON.parse(response.body)['xuequ'];
+                for (i in xuequ) {
+                    this.xuequ.push(xuequ[i]);
+                }
+            }, function(error) {
+                console.log(error)
+            });
+        },
+
+        queryXuequ: function(xq) {
+            this.$http.get('http://192.168.33.11/xiaoqu', {params: {xuequ: xq}}).then(function(response) {
+                this.xiaoqu = [];
+                var xiaoqu = JSON.parse(response.body)['xiaoqu'];
+                for (i in xiaoqu) {
+                    this.xiaoqu.push(xiaoqu[i]);
+                }
+            }, function(error) {
+                console.log(error)
+            });
+        },
+
+        queryXiaoqu: function(xq) {
+            this.$http.get('http://192.168.33.11/ershou', {params: {xiaoqu: xq}}).then(function(response) {
+                this.ershou = [];
+                var ershou = JSON.parse(response.body)['ershou'];
+                for (i in ershou) {
+                    this.ershou.push(ershou[i]);
+                }
+            }, function(error) {
+                console.log(error)
+            });
         }
     }
 });
