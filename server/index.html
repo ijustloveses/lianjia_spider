@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Vue</title>
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css"></link>
+</head>
+
+<body>
+    <!-- navigation bar -->
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+            <a class="navbar-brand"><i class="glyphicon glyphicon-bullhorn"></i>Vue Events Bulletin Board</a>
+        </div>
+    </nav>
+
+    <!-- main body of our application -->
+    <div class="container" id="events">
+        <!-- add an event form -->
+        <div class="col-sm-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3>Add an Event</h3>
+                </div>
+
+                <div class="panel-body">
+                    <div class="form-group">
+                        <input class="form-control" placeholder="Event Name" v-model="eve.name"/>
+                    </div>
+
+                    <div class="form-group">
+                        <textarea class="form-control" placeholder="Event Desc" v-model="eve.desc"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="date" class="form-control" placeholder="Date" v-model="eve.date"/>
+                    </div>
+
+                    <button class="btn btn-primary" v-on:click="addEvent">Submit</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- show the events -->
+        <div class="col-sm-6">
+            <div class="list-group">
+                <a is="event-item"
+                   v-for="(eve, index) in events"
+                   v-bind:eve="eve">
+               </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS -->
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <script src="node_modules/vue-resource/dist/vue-resource.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
