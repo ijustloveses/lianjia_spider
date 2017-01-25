@@ -41,8 +41,8 @@ def ershou():
     xiaoqu = request.query.xiaoqu
     q = InfoQuerier('../spider/lianjia-xq.db')
     ershou = []
-    for _, title, info, floor, history, tag, pricestr, _, unit, _ in q.get_ershou_by_xiaoqu(xiaoqu):
-        ershou.append([title, info, floor, history, tag, pricestr, unit])
+    for url, title, info, floor, history, tag, pricestr, _, unit, _ in q.get_ershou_by_xiaoqu(xiaoqu):
+        ershou.append([title, info, floor, history, tag, pricestr, unit, url])
     response.set_header('Access-Control-Allow-Origin', '*')
     return json.dumps({"ershou": ershou})
 

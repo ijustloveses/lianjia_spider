@@ -1,9 +1,9 @@
 Vue.component('ershou-item', {
     template: '\
-    <a href="#" class="list-group-item">\
+    <span class="list-group-item">\
         <h4 class="list-group-item-heading">\
             <i class="glyphicon glyphicon-bullhorn"></i>\
-            {{ es[0] }}\
+            <a v-bind:href="es[7]" target="_blank"> {{ es[0] }} </a>\
         </h4>\
         <h5>\
             {{ es[1] }}\
