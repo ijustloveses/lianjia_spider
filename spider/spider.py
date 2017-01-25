@@ -233,7 +233,7 @@ def run_ershoufang_info():
     db_xq.execute(command)
 
     # start = False
-    xuequs = [u'东四、朝阳门、建国门学区', u'和平里学区', u'北新桥、东直门学区']  # , u'德胜学区', u'月坛学区', u'什刹海学区', u'展览路学区']
+    xuequs = [u'东四、朝阳门、建国门学区', u'和平里学区', u'北新桥、东直门学区', u'德胜学区', u'月坛学区', u'什刹海学区', u'展览路学区']
     for xuequ in xuequs:
         for xiaoqu, xiaoqu_id in get_xiaoqu_by_xuequ(db_xq, xuequ):
             # if xiaoqu_id != 'c1111027374577' and start == False:
